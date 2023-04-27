@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+ 
+
+The homework for this week has two questions. The first one is meant to give you the opportunity to implement logistics regression and evaluate the model. You can work on this in Radiant and submit an html file as your report. The second one is meant to strengthen your conceptual understanding of logistic regression. For your convenience you can work on this using pen and paper and scan (or take a good quality picture) your work. You can submit this separately.
+*Question 1:* This question is based on the StockMarket.rda dataset that contains the weekly percentage returns for the S&P 500 stock index between 1990 and 2010. The details of the columns are as follows:
+• Year: The year that the observation was recorded
+• Lag1 : Percentage return for previous week
+• Lag2 : Percentage return for 2 weeks previous
+• Lag3 : Percentage return for 3 weeks previous
+• Lag4 : Percentage return for 4 weeks previous
+• Lag5 : Percentage return for 5 weeks previous
+• Volume: Volume of shares traded (average number of daily shares traded in billions)
+• Today: Percentage return for this week
+• Direction: A factor with levels Down and Up indicating whether the market had a positive or negative
+return on a given week
+• Training: Indicates if this column needs to be in the test or train set. 1 refers to train and 0 refers to
+test. Use this column to split the data into training and testing data when necessary.
+1. Report statistical summaries of the data columns along with pairwise scatterplots. For the statistical
+summaries, provide descriptive statistics of each column (mean, stdev. min ,max). Make plots of the distribution of each column. Summarize your observations. What patterns do you observe in the data?
+
+# Importing libraries to use
+```{r}
+library(tidymodels)
+```
+
+# Viewing the structure of the data
+```{r}
+glimpse(StockMarket)
+```
+# statistical summaries
+```{r}
+skimr::skim(StockMarket)
+```
+*EXPLANATION:* From the data ,Year has the highest mean while yhe lag5 has the lowest mean.There were no missing data.Year had the highest standard deviation while Training had the lowest.Lag1,Lag2,Lag3,Lag4 and Lag5 had minium value of -18.195000  and 12.026000 maximum value.
+# pairwise scatterplots
+```{r}
+library(car)
+
+scatterplotMatrix(~ Year +  Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume + Today, data = StockMarket)
+```
+*EXPLANATION:*Lag1,Lag2,Lag3,Lag4 , Lag5 and Today columns  had normal distribution while Year and Volume did not had normal distribution.
+
+
+2. Use the full data set to perform a logistic regression with Direction as the response variable. Use the five Lag variables and Volume as the predictor variables. Do not include the Training column in your model. Report the model summary and identify the predictors that appear to be statistically
+significant.
+
+#  Build the model
+```{r}
+formula <- Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume
+logit <- glm(formula, data = StockMarket, family = 'binomial')
+summary(logit)
+```
+*EXPLANATION*
+The performance of our logistic regression is evaluated with specific key metrics;
+
+1. AIC (Akaike Information Criteria): It measures the fit when a penalty is applied to the number of           parameters. Smaller AIC values indicate the model is closer to the truth.Our model had a value of 1500.4
+2. Null deviance: We can interpret it as a Chi-square value (fitted value different from the actual value      hypothesis testing).Our model had a value of 1496.2  on 1088  degrees of freedom
+3. Residual Deviance: It is interpreted as a Chi-square hypothesis testing.Our model had a value of 1486.4     on 1082  degrees of freedom
+4. Number of Fisher Scoring iterations: Number of iterations before converging.Our model had a value of  4
+
+Also the above response figures out that Lag3,Lag5 and Volume  co-efficient are significant as their probability is more than 0.5.
+
+
+3. Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression in this case.
+# confusion matrix
+```{r}
+library(GGally)
+ggcorr(StockMarket)
+```
+
+*EXPLANATION:* The five Lag variables are weakly correlated whereas in the logistic regression model Lag3 and Lag4 have P> 0.5
+
+
+4. Split the dataset into a training and testing as follows: Look in the Training column in the dataset. A 1 in the column means that the observation needs to be in the training set. Otherwise it should be in the test set.
+(a) Run the logistic regression to estimate the model using the training set. Make predictions on the test set and report the confusion matrix based on the test predictions. What is the test error rate (% of incorrect predictions)?
+# Splitting data 
+```{r}
+train_set <- filter(StockMarket, StockMarket$Training == 1)
+dim(train_set)
+test_set <- filter(StockMarket, StockMarket$Training == 0)
+dim(test_set)
+```
+
+# Running the logistic regression to estimate the model using the training set
+
+
+```{r}
+formula <- Direction ~ Year + Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume + Today
+logit <- glm(formula, data = train_set, family = 'binomial')
+summary(logit)
+
+```
+*EXPLANATION*
+The performance of our logistic regression is evaluated with specific key metrics;
+
+1. AIC (Akaike Information Criteria): It measures the fit when a penalty is applied to the number of           parameters. Smaller AIC values indicate the model is closer to the truth.Our model had a value of 18,hence our model performed well on train dataset.
+2. Null deviance: We can interpret it as a Chi-square value (fitted value different from the actual value      hypothesis testing).Our model had a value of 1.0492e+03  on 761  degrees of freedom
+3. Residual Deviance: It is interpreted as a Chi-square hypothesis testing.Our model had a value of 6.4040e-06  on 753  degrees of freedom
+4. Number of Fisher Scoring iterations: Number of iterations before converging.Our model had a value of 25
+
+
+# Assess the performance of the model
+```{r}
+predict <- predict(logit, test_set, type = 'response')
+```
+
+# confusion matrix
+```{r}
+table_mat <- table(test_set$Direction, predict > 0.5)
+table_mat
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+# Accuracy
+```{r}
+accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+accuracy_Test
+```
+*EXPLANATION*: The accuracy of our model is 1,which tells us that it really performed well after being fitted on the test dataset.Model accuracy is calculated  by summing the true positive + true negative over the total observation from confusion matrix we calculated.Hence our *TEST ERROR RATE IS 0*
+
+
+
+(b) Try building a better model in terms of prediction accuracy on the test data ( i.e., percentage of correct predictions). You can experiment with different combinations of predictors, including possible transformations and interactions. Describe the details of your new model and also report the associated confusion matrix.
+
+*EXPLANATION*: There was no need of creating another model since our earlier model performed very well with an accuracy of 1
+
+
+
